@@ -27,33 +27,38 @@ function addEntry(type) {
     var obsah = (sirka * vyska).toFixed(2); // Výpočet obsahu sítě v m2
     var celkovyObsah = (obsah * pocet).toFixed(2); // Celkový obsah v m2
 
-    // Generování řádku tabulky
-    var newRow = "<tr><td>" + pokoj + "</td><td>" + type + "</td><td>" + sirkaCm + "x" + vyskaCm + "</td><td class='count'>" + pocet + "x</td><td class='area'>" + obsah + "m2</td><td>(" + celkovyObsah + "m2)</td><td><button onclick='increaseCount(this)'>+</button> <button onclick='decreaseCount(this)'>-</button></td></tr>";
-
-    // Přidání záznamu do odpovídající kategorie
-    records[type].push(newRow);
-
-    // Aktualizace tabulky
-    updateTable();
-
-    // Vyčištění vstupních polí po přidání záznamu
-    document.getElementById('sirka').value = "";
-    document.getElementById('vyska').value = "";
-
-    // Aktualizace celkového obsahu po přidání řádku
-    updateTotalArea();
-}
-
-// Funkce pro aktualizaci tabulky
-function updateTable() {
     var tableBody = document.getElementById('table-body');
-    tableBody.innerHTML = '';
+    var rows = tableBody.getElementsByTagName('tr');
+    var found = false;
 
-    for (var type in records) {
-        for (var i = 0; i < records[type].length; i++) {
-            tableBody.innerHTML += records[type][i];
+    for (var i = 0; i < rows.length; i++) {
+        var cells = rows[i].getElementsByTagName('td');
+        var rowPokoj = cells[0].innerText.trim();
+        var rowTyp = cells[1].innerText.trim();
+        var rowRozmer = cells[2].innerText.trim();
+
+        if (rowPokoj === pokoj && rowTyp === type && rowRozmer === sirkaCm + "x" + vyskaCm) {
+            var countCell = cells[3];
+            var count = parseInt(countCell.innerText);
+            count++;
+            countCell.innerText = count + "x";
+
+            updateRowArea(rows[i]);
+            updateTotalArea();
+            found = true;
+            break;
         }
     }
+
+    if (!found) {
+        var newRow = document.createElement("tr");
+        newRow.innerHTML = "<td>" + pokoj + "</td><td>" + type + "</td><td>" + sirkaCm + "x" + vyskaCm + "</td><td class='count'>" + pocet + "x</td><td class='area'>" + obsah + "m2</td><td>(" + celkovyObsah + "m2)</td><td><button onclick='increaseCount(this)'>+</button> <button onclick='decreaseCount(this)'>-</button></td>";
+        tableBody.appendChild(newRow);
+    }
+
+    document.getElementById('sirka').value = "";
+    document.getElementById('vyska').value = "";
+    updateTotalArea();
 }
 
 // Funkce pro zvýšení počtu sítí
@@ -78,7 +83,6 @@ function decreaseCount(btn) {
         count--;
         countCell.innerText = count + "x";
     } else {
-        // Volitelné: Potvrzení před smazáním řádku, pokud je počet 1
         var confirmDelete = confirm("Opravdu chcete odstranit tento rozměr?");
         if (confirmDelete) {
             row.parentNode.removeChild(row);
@@ -102,87 +106,66 @@ function updateRowArea(row) {
     totalAreaCell.innerText = "(" + totalArea + "m2)";
 }
 
-// Funkce pro kopírování hodnot tabulky jako hlavičky
+// Funkce pro kopírování hodnot do schránky
 function copyToClipboard() {
-    var headerText = "Sítě do oken. Barva rámu - " + document.getElementById('barva-ramu').value + ". Šířka rámu - " + document.getElementById('sirka-ramu').value + "\n\n";
+    var barvaRamu = document.getElementById('barva-ramu').value;
+    var sirkaRamu = document.getElementById('sirka-ramu').value;
+    var text = `Sítě do oken. Barva rámu - ${barvaRamu}. Šířka rámu - ${sirkaRamu}cm\n\n`;
 
-    // Kopírování hlavičky
-    var copiedText = headerText;
+    var tableBody = document.getElementById('table-body');
+    var rows = tableBody.getElementsByTagName('tr');
+    var totalAreas = {
+        'Fixní': 0,
+        'Dveřní': 0,
+        'Posuvná': 0,
+        'Rolovací': 0
+    };
+    var totalCounts = {
+        'Fixní': 0,
+        'Dveřní': 0,
+        'Posuvná': 0,
+        'Rolovací': 0
+    };
 
-    // Kopírování každého řádku z tabulky
-    var tableRows = document.getElementById('table-body').getElementsByTagName('tr');
-    for (var i = 0; i < tableRows.length; i++) {
-        copiedText += tableRows[i].getElementsByTagName('td')[0].innerText.trim() + " ";
-        copiedText += tableRows[i].getElementsByTagName('td')[1].innerText.trim() + " ";
-        copiedText += tableRows[i].getElementsByTagName('td')[2].innerText.trim() + " ";
-        copiedText += tableRows[i].getElementsByClassName('count')[0].innerText.trim() + " ";
-        copiedText += tableRows[i].getElementsByClassName('area')[0].innerText.trim() + " ";
-        copiedText += tableRows[i].getElementsByTagName('td')[5].innerText.trim() + "\n";
+    for (var i = 0; i < rows.length; i++) {
+        var cells = rows[i].getElementsByTagName('td');
+        var pokoj = cells[0].innerText;
+        var typ = cells[1].innerText;
+        var rozmer = cells[2].innerText;
+        var pocet = parseInt(cells[3].innerText);
+        var obsah = cells[4].innerText;
+        var celkovyObsah = cells[5].innerText;
+
+        text += `${pokoj} ${typ} ${rozmer} ${pocet}x ${obsah} ${celkovyObsah}\n`;
+
+        totalAreas[typ] += parseFloat(obsah.replace("m2", "")) * pocet;
+        totalCounts[typ] += pocet;
     }
 
-    // Přidání mezery mezi rozměry a celkovým obsahem
-    copiedText += "\n";
+    text += "\ndohromady:\n";
+    text += `Fixní: ${totalAreas['Fixní'].toFixed(2)}m2 (${totalCounts['Fixní']}x)\n`;
+    text += `Dveřní: ${totalAreas['Dveřní'].toFixed(2)}m2 (${totalCounts['Dveřní']}x)\n`;
+    text += `Posuvná: ${totalAreas['Posuvná'].toFixed(2)}m2 (${totalCounts['Posuvná']}x)\n`;
+    text += `Rolovací: ${totalAreas['Rolovací'].toFixed(2)}m2 (${totalCounts['Rolovací']}x)\n`;
 
-    // Zobrazení celkového obsahu a počtu sítí
-    copiedText += "dohromady:\n";
-    copiedText += "Fixní: " + calculateTotalArea('Fixní') + "m2 (" + calculateTotalCount('Fixní') + "x)\n";
-    copiedText += "Dveřní: " + calculateTotalArea('Dveřní') + "m2 (" + calculateTotalCount('Dveřní') + "x)\n";
-    copiedText += "Posuvná: " + calculateTotalArea('Posuvná') + "m2 (" + calculateTotalCount('Posuvná') + "x)\n";
-    copiedText += "Rolovací: " + calculateTotalArea('Rolovací') + "m2 (" + calculateTotalCount('Rolovací') + "x)\n";
-
-    // Kopírování do schránky
-    navigator.clipboard.writeText(copiedText).then(function() {
-        alert("Text zkopírován do schránky");
-    }, function() {
-        alert("Chyba při kopírování textu");
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Tabulka byla zkopírována do schránky.');
+    }, () => {
+        alert('Kopírování do schránky selhalo.');
     });
 }
 
-// Funkce pro výpočet celkového obsahu
-function calculateTotalArea(type) {
-    var totalArea = 0;
-    var tableRows = document.getElementById('table-body').getElementsByTagName('tr');
-    for (var i = 0; i < tableRows.length; i++) {
-        var rowType = tableRows[i].getElementsByTagName('td')[1].innerText.trim();
-        if (rowType === type) {
-            var areaCell = tableRows[i].getElementsByTagName('td')[5];
-            var area = parseFloat(areaCell.innerText.replace(/[^\d.]/g, ''));
-            totalArea += area;
-        }
-    }
-    return totalArea.toFixed(2);
-}
-
-// Funkce pro výpočet celkového počtu
-function calculateTotalCount(type) {
-    var totalCount = 0;
-    var tableRows = document.getElementById('table-body').getElementsByTagName('tr');
-    for (var i = 0; i < tableRows.length; i++) {
-        var rowType = tableRows[i].getElementsByTagName('td')[1].innerText.trim();
-        if (rowType === type) {
-            var countCell = tableRows[i].getElementsByClassName('count')[0];
-            var count = parseInt(countCell.innerText.replace("x", ""));
-            totalCount += count;
-        }
-    }
-    return totalCount;
-}
-
-// Funkce pro aktualizaci celkového obsahu
+// Funkce pro aktualizaci celkové oblasti
 function updateTotalArea() {
-    var totalAreaFixni = calculateTotalArea('Fixní');
-    var totalCountFixni = calculateTotalCount('Fixní');
-    var totalAreaDverni = calculateTotalArea('Dveřní');
-    var totalCountDverni = calculateTotalCount('Dveřní');
-    var totalAreaPosuvna = calculateTotalArea('Posuvná');
-    var totalCountPosuvna = calculateTotalCount('Posuvná');
-    var totalAreaRolovaci = calculateTotalArea('Rolovací');
-    var totalCountRolovaci = calculateTotalCount('Rolovací');
+    var tableBody = document.getElementById('table-body');
+    var rows = tableBody.getElementsByTagName('tr');
+    var totalArea = 0;
 
-    document.getElementById('total-area').innerText = "dohromady:\nFixní: " + totalAreaFixni + "m2 (" + totalCountFixni + "x)\nDveřní: " + totalAreaDverni + "m2 (" + totalCountDverni + "x)\nPosuvná: " + totalAreaPosuvna + "m2 (" + totalCountPosuvna + "x)\nRolovací: " + totalAreaRolovaci + "m2 (" + totalCountRolovaci + "x)";
+    for (var i = 0; i < rows.length; i++) {
+        var count = parseInt(rows[i].getElementsByClassName('count')[0].innerText);
+        var area = parseFloat(rows[i].getElementsByClassName('area')[0].innerText.replace("m2", ""));
+        totalArea += (area * count);
+    }
+
+    document.getElementById('total-area').innerText = "dohromady: " + totalArea.toFixed(2) + "m2";
 }
-
-// Prevence pro náhodné aktualizování stránky
-window.onbeforeunload = function() {
-    return "Opravdu chcete opustit tuto stránku? Data budou ztracena.";
-};
