@@ -35,3 +35,9 @@ th, td {
     padding: 10px;
     text-align: center;
 }
+
+.footer-text {
+    margin-top: 20px;
+    text-align: center;
+    font-style: italic;
+}
