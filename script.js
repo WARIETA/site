@@ -25,6 +25,12 @@ function addEntry(type) {
 
     var pocet = 1; // Výchozí počet sítí
     var obsah = (sirka * vyska).toFixed(2); // Výpočet obsahu sítě v m2
+
+    // Zaokrouhlení na 1 m2, pokud je obsah menší než 1 m2
+    if (parseFloat(obsah) < 1) {
+        obsah = "1.00";
+    }
+
     var celkovyObsah = (obsah * pocet).toFixed(2); // Celkový obsah v m2
 
     var tableBody = document.getElementById('table-body');
